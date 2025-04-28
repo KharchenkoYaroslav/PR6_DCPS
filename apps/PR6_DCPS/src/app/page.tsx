@@ -54,13 +54,26 @@ const Page: React.FC = () => {
 
       setState((prev) => ({ ...prev, isRunning: true }));
 
+      // Filter out cells with state 'T' and create a map of coordinates
+      const nonTreeCells = state.field.cells.filter(cell => cell.state !== 'T');
+      const coords = nonTreeCells.reduce((acc, cell, index) => {
+        acc[`${cell.x},${cell.y}`] = index;
+        return acc;
+      }, {} as Record<string, number>);
+
       const response = await fetch('/api/forest-fire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          field: state.field,
+          // Send only non-T cells
+          field: {
+            cells: nonTreeCells,
+            width: state.field.width,
+            height: state.field.height,
+            coordMap: {} // This will be rebuilt on server
+          },
           params: state.params,
-          coords: Object.fromEntries(state.field.coordMap),
+          coords: coords,
         }),
         signal: AbortSignal.timeout(30000),
       });

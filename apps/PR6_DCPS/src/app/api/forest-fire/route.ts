@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   calculateNextGeneration,
   findFlammableCells,
+  generateCoordMap,
 } from '../../algorithm/algorithm';
 import { Cell, Field, ForestFireParams } from '../../../types/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +20,7 @@ const sessions = new Map<
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { field, params, coords} = body;
+    const { field, params, coords } = body;
 
     if (!field || !params || !coords) {
       return NextResponse.json(
@@ -29,12 +30,47 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionId = uuidv4();
-    const coordMap = new Map<string, number>(Object.entries(body.coords));
+    const coordMap = new Map<string, number>(Object.entries(coords));
+
+    // Reconstruct the full field with all cells
+    const fullField: Field = {
+      width: field.width,
+      height: field.height,
+      cells: [],
+      coordMap: new Map()
+    };
+
+    // Initialize all cells as 'T' (Trees)
+    const halfWidth = Math.floor(field.width / 2);
+    const halfHeight = Math.floor(field.height / 2);
+    const startX = -halfWidth;
+    const startY = -halfHeight;
+    const endX = halfWidth + (field.width % 2 === 0 ? 0 : 1);
+    const endY = halfHeight + (field.height % 2 === 0 ? 0 : 1);
+
+    // First create all cells as Trees
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) {
+        fullField.cells.push({ x, y, state: 'T', burnTime: 0 });
+      }
+    }
+
+    // Then update with the non-T cells we received
+    for (const cell of field.cells) {
+      const coord = `${cell.x},${cell.y}`;
+      const index = coordMap.get(coord);
+      if (index !== undefined) {
+        fullField.cells[index] = cell;
+      }
+    }
+
+    // Generate the full coordMap
+    fullField.coordMap = generateCoordMap(fullField.cells);
 
     sessions.set(sessionId, {
-      field,
+      field: fullField,
       params,
-      coordMap,
+      coordMap: fullField.coordMap, // Use the full coordMap
       abortController: new AbortController(),
     });
 
