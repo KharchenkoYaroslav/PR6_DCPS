@@ -82,6 +82,8 @@ const Page: React.FC = () => {
           updatedCellsMap: Record<string, Cell>;
         };
 
+        canvasRef.current?.updateCells(updatedCellsMap);
+
         setState((prev) => {
           const newCells = prev.field.cells.slice();
           const { coordMap } = prev.field;
@@ -90,7 +92,6 @@ const Page: React.FC = () => {
             const index = coordMap.get(coord);
             if (index !== undefined) {
               newCells[index] = updatedCellsMap[coord];
-              canvasRef.current?.redrawCellByIndex(index);
             }
           }
 

@@ -75,9 +75,8 @@ export async function GET(request: NextRequest) {
 
       try {
         let flammableCells = findFlammableCells(session.field);
-        let simulationEnded = false;
 
-        while (!session.abortController.signal.aborted && !simulationEnded) {
+        while (!session.abortController.signal.aborted) {
           await new Promise((resolve) =>
             setTimeout(resolve, session.params.updateInterval * 1000)
           );
@@ -97,7 +96,7 @@ export async function GET(request: NextRequest) {
 
           if (flammableCells.size === 0) {
             controller.enqueue(encoder.encode(`event: end\ndata: {}\n\n`));
-            simulationEnded = true;
+            break;
           }
         }
       } catch (error) {

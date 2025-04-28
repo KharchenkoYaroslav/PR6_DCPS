@@ -20,7 +20,7 @@ interface CanvasProps {
 
 export interface CanvasRef {
   centerCanvas: () => void;
-  redrawCellByIndex: (index: number) => void;
+  updateCells: (updatedCellsMap: Record<string, Cell>) => void;
 }
 
 const Canvas = forwardRef<CanvasRef, CanvasProps>(
@@ -47,23 +47,26 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
         cell: Cell,
         size: number,
         x: number,
-        y: number
+        y: number,
+        Full: boolean
       ) => {
-        switch (cell.state) {
-          case 'B':
-            ctx.fillStyle = '#FF4500';
-            break;
-          case 'E':
-            ctx.fillStyle = '#8B4513';
-            break;
-          case 'T':
-            ctx.fillStyle = '#90EE90';
-            break;
-          default:
-            ctx.fillStyle = 'gray';
-        }
+        if (cell.state === 'B' && !Full) {
+          ctx.fillStyle = '#FF4500';
+        } else if (cell.state === 'E' || (cell.state === 'B' && Full)) {
+          ctx.fillStyle = '#8B4513';
 
-        ctx.fillRect(x, y, size, size);
+        } else if (cell.state === 'T') {
+          ctx.fillStyle = '#90EE90';
+
+        } else {
+          ctx.fillStyle = 'gray';
+
+        }
+        if (!Full && cell.state === 'B') {
+          ctx.fillRect(x+0.5, y+0.5, size-1, size-1);
+        } else {
+          ctx.fillRect(x+0.1, y+0.1, size-0.2, size-0.2);
+        }
       },
       []
     );
@@ -97,48 +100,11 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
         const size = CELL_SIZE * scale;
         const x = offsetX + cell.x * CELL_SIZE * scale;
         const y = offsetY + cell.y * CELL_SIZE * scale;
-        drawCell(ctx, cell, size, x, y);
+        drawCell(ctx, cell, size, x, y, isRunning);
       });
 
-      ctx.strokeStyle = '#ddd';
-      ctx.lineWidth = 1;
 
-      for (
-        let i = -halfArea;
-        i <= halfArea + (field.width % 2 === 0 ? 0 : 1);
-        i++
-      ) {
-        ctx.beginPath();
-        ctx.moveTo(
-          offsetX + i * CELL_SIZE * scale,
-          offsetY - halfArea * CELL_SIZE * scale
-        );
-        ctx.lineTo(
-          offsetX + i * CELL_SIZE * scale,
-          offsetY +
-            (halfArea + (field.width % 2 === 0 ? 0 : 1)) * CELL_SIZE * scale
-        );
-        ctx.stroke();
-      }
-
-      for (
-        let i = -halfArea;
-        i <= halfArea + (field.width % 2 === 0 ? 0 : 1);
-        i++
-      ) {
-        ctx.beginPath();
-        ctx.moveTo(
-          offsetX - halfArea * CELL_SIZE * scale,
-          offsetY + i * CELL_SIZE * scale
-        );
-        ctx.lineTo(
-          offsetX +
-            (halfArea + (field.width % 2 === 0 ? 0 : 1)) * CELL_SIZE * scale,
-          offsetY + i * CELL_SIZE * scale
-        );
-        ctx.stroke();
-      }
-    }, [field.width, drawCell]);
+    }, [field.width, drawCell, isRunning]);
 
     const setScale = useCallback(
       (newScale: number) => {
@@ -158,40 +124,40 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
       });
 
       cellCacheRef.current = cache;
-      drawFullGrid();
-    }, [field, drawFullGrid]);
+      if (!isRunning) {
+        drawFullGrid();
+      }
+    }, [field, drawFullGrid, isRunning]);
 
     const centerCanvas = useCallback(() => {
       if (canvasRef.current) {
         transformRef.current = {
           offsetX: canvasRef.current.width / 2,
           offsetY: canvasRef.current.height / 2,
-          scale: 1,
+          scale: transformRef.current.scale
         };
-        setScale(1);
+
         drawFullGrid();
       }
-    }, [drawFullGrid, setScale]);
+    }, [drawFullGrid]);
 
-    const redrawCellByIndex = useCallback(
-      (index: number) => {
+    const updateCells = useCallback(
+      (updatedCellsMap: Record<string, Cell>) => {
         const ctx = ctxRef.current;
 
         if (!ctx) return;
 
-        const cell = cellsRef.current[index];
-
-
         const { offsetX, offsetY, scale } = transformRef.current;
         const size = CELL_SIZE * scale;
-        const x = offsetX + cell.x * CELL_SIZE * scale;
-        const y = offsetY + cell.y * CELL_SIZE * scale;
 
-        drawCell(ctx, cell, size, x, y);
+        Object.entries(updatedCellsMap).forEach(([key, cell]) => {
+          const x = offsetX + cell.x * CELL_SIZE * scale;
+          const y = offsetY + cell.y * CELL_SIZE * scale;
 
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, size, size);
+          drawCell(ctx, cell, size, x, y, false);
+        });
+
+
       },
       [drawCell]
     );
@@ -200,9 +166,9 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
       ref,
       () => ({
         centerCanvas,
-        redrawCellByIndex,
+        updateCells,
       }),
-      [centerCanvas, redrawCellByIndex]
+      [centerCanvas, updateCells]
     );
 
     const getCellAtPosition = useCallback(
@@ -232,7 +198,6 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
 
     const handleCellClick = useCallback(
       (e: MouseEvent) => {
-
         if (isDragging || isRunning) return;
 
         e.preventDefault();
@@ -282,6 +247,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
         transformRef.current.offsetY += dy;
 
         setLastMousePos({ x: e.clientX, y: e.clientY });
+
         drawFullGrid();
       };
 

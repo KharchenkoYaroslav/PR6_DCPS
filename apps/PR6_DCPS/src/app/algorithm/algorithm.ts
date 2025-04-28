@@ -91,7 +91,7 @@ export function calculateNextGeneration(
   }
 
   const updatedCellsMap = new Map<string, Cell>();
-  updatedCells.forEach((cell, idx) => {
+  updatedCells.forEach((cell) => {
     updatedCellsMap.set(`${cell.x},${cell.y}`, cell);
   });
 
