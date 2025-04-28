@@ -62,6 +62,7 @@ const Page: React.FC = () => {
           params: state.params,
           coords: Object.fromEntries(state.field.coordMap),
         }),
+        signal: AbortSignal.timeout(30000),
       });
 
       const data = await response.json();
@@ -137,6 +138,7 @@ const Page: React.FC = () => {
       if (sessionId) {
         await fetch(`/api/forest-fire?sessionId=${sessionId}`, {
           method: 'DELETE',
+          signal: AbortSignal.timeout(30000),
         });
       }
     } catch (error) {
