@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   calculateNextGeneration,
   findFlammableCells,
-  generateCoordMap,
 } from '../../algorithm/algorithm';
 import { Cell, Field, ForestFireParams } from '../../../types/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,57 +19,42 @@ const sessions = new Map<
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { field, params, coords } = body;
+    const { nonTreeCells, params, coords, width, height } = body;
 
-    if (!field || !params || !coords) {
+    if (!nonTreeCells || !params || !coords || !width || !height) {
       return NextResponse.json(
-        { error: 'Missing field or params' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
     const sessionId = uuidv4();
+    const cells: Cell[] = [];
+
     const coordMap = new Map<string, number>(Object.entries(coords));
 
-    // Reconstruct the full field with all cells
-    const fullField: Field = {
-      width: field.width,
-      height: field.height,
-      cells: [],
-      coordMap: new Map()
+    console.log(coordMap);
+    for (const [coord, index] of coordMap.entries()) {
+      const [xStr, yStr] = coord.split(',');
+      const x = Number(xStr);
+      const y = Number(yStr);
+
+      const nonTreeCell = nonTreeCells.find((cell: Cell) => cell.x === x && cell.y === y);
+
+      cells[index] = nonTreeCell || { x, y, state: 'T', burnTime: 0 };
+    }
+
+    const field: Field = {
+      cells,
+      width,
+      height,
+      coordMap,
     };
 
-    // Initialize all cells as 'T' (Trees)
-    const halfWidth = Math.floor(field.width / 2);
-    const halfHeight = Math.floor(field.height / 2);
-    const startX = -halfWidth;
-    const startY = -halfHeight;
-    const endX = halfWidth + (field.width % 2 === 0 ? 0 : 1);
-    const endY = halfHeight + (field.height % 2 === 0 ? 0 : 1);
-
-    // First create all cells as Trees
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        fullField.cells.push({ x, y, state: 'T', burnTime: 0 });
-      }
-    }
-
-    // Then update with the non-T cells we received
-    for (const cell of field.cells) {
-      const coord = `${cell.x},${cell.y}`;
-      const index = coordMap.get(coord);
-      if (index !== undefined) {
-        fullField.cells[index] = cell;
-      }
-    }
-
-    // Generate the full coordMap
-    fullField.coordMap = generateCoordMap(fullField.cells);
-
     sessions.set(sessionId, {
-      field: fullField,
+      field,
       params,
-      coordMap: fullField.coordMap, // Use the full coordMap
+      coordMap,
       abortController: new AbortController(),
     });
 
@@ -83,6 +67,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
@@ -112,10 +97,9 @@ export async function GET(request: NextRequest) {
       try {
         let flammableCells = findFlammableCells(session.field);
 
+
         while (!session.abortController.signal.aborted) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, session.params.updateInterval * 1000)
-          );
+
 
           const result = calculateNextGeneration(
             session.field,
@@ -134,6 +118,10 @@ export async function GET(request: NextRequest) {
             controller.enqueue(encoder.encode(`event: end\ndata: {}\n\n`));
             break;
           }
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, session.params.updateInterval * 1000)
+          );
         }
       } catch (error) {
         console.error('Error in SSE loop:', error);

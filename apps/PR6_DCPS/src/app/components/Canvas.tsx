@@ -157,7 +157,6 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
           drawCell(ctx, cell, size, x, y, false);
         });
 
-
       },
       [drawCell]
     );
