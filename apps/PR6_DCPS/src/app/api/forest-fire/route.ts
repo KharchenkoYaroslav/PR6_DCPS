@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
 
     const coordMap = new Map<string, number>(Object.entries(coords));
 
-    console.log(coordMap);
     for (const [coord, index] of coordMap.entries()) {
       const [xStr, yStr] = coord.split(',');
       const x = Number(xStr);
