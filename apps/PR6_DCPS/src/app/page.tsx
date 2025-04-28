@@ -7,6 +7,7 @@ import Canvas, { CanvasRef } from './components/Canvas';
 import ControlMenu from './components/ControlMenu';
 import { generateCoordMap } from './algorithm/algorithm';
 
+
 const initializeField = (interactionArea: number): Field => {
   const cells: Cell[] = [];
 
