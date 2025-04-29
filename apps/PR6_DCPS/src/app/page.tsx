@@ -7,7 +7,6 @@ import Canvas, { CanvasRef } from './components/Canvas';
 import ControlMenu from './components/ControlMenu';
 import { generateCoordMap } from './algorithm/algorithm';
 
-
 const initializeField = (interactionArea: number): Field => {
   const cells: Cell[] = [];
 
@@ -23,7 +22,12 @@ const initializeField = (interactionArea: number): Field => {
     }
   }
 
-  return { cells, width: interactionArea, height: interactionArea, coordMap: generateCoordMap(cells) };
+  return {
+    cells,
+    width: interactionArea,
+    height: interactionArea,
+    coordMap: generateCoordMap(cells),
+  };
 };
 
 const Page: React.FC = () => {
@@ -54,8 +58,9 @@ const Page: React.FC = () => {
 
       setState((prev) => ({ ...prev, isRunning: true }));
 
-      // Filter out cells with state 'T' and create a map of coordinates
-      const nonTreeCells = state.field.cells.filter(cell => cell.state !== 'T');
+      const nonTreeCells = state.field.cells.filter(
+        (cell) => cell.state !== 'T'
+      );
 
       const response = await fetch('/api/forest-fire', {
         method: 'POST',

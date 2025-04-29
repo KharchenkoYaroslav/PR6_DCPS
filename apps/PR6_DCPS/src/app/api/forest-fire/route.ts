@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
       const x = Number(xStr);
       const y = Number(yStr);
 
-      const nonTreeCell = nonTreeCells.find((cell: Cell) => cell.x === x && cell.y === y);
+      const nonTreeCell = nonTreeCells.find(
+        (cell: Cell) => cell.x === x && cell.y === y
+      );
 
       cells[index] = nonTreeCell || { x, y, state: 'T', burnTime: 0 };
     }
@@ -66,7 +68,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
@@ -96,10 +97,7 @@ export async function GET(request: NextRequest) {
       try {
         let flammableCells = findFlammableCells(session.field);
 
-
         while (!session.abortController.signal.aborted) {
-
-
           const result = calculateNextGeneration(
             session.field,
             session.params,
